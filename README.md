@@ -1,3 +1,7 @@
+[![Python CI](https://github.com/supriyaagent23/HemoDesk/actions/workflows/ci.yml/badge.svg)](https://github.com/supriyaagent23/HemoDesk/actions/workflows/ci.yml)
+[![Python Version](https://img.shields.io/badge/python-3.9+-blue.svg)](https://python.org)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
 # 🩸 HemoDesk - Blood Donor Management System
 
 A desktop application for managing blood donors, built with **Flet** and **SQLite**.
