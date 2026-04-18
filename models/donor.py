@@ -1,10 +1,9 @@
-from dataclasses import dataclass
-
-@dataclass
 class Donor:
-    name: str
-    age: int
-    blood_type: str
-    phone: str
-    last_donation: str = ""
-    id: int | None = None
+    def __init__(self, name, age, blood_type, phone, gender="", last_donation=None, id=None):
+        self.id = id
+        self.name = name
+        self.age = age
+        self.blood_type = blood_type
+        self.phone = phone
+        self.gender = gender  
+        self.last_donation = last_donation

@@ -1,70 +1,84 @@
 import flet as ft
 
-BLOOD_TYPES = ["All", "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
+# Blood type lists
+BLOOD_TYPES = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
+BLOOD_TYPES_WITH_UNKNOWN = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "Unknown"]
 BLOOD_TYPES_NO_ALL = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
-URGENCY_LEVELS = ["Normal", "Urgent", "Critical"]
+ALL_BLOOD_TYPES = ["All"] + BLOOD_TYPES
+
+URGENCY_LEVELS = ["Critical", "High", "Normal", "Low"]
 STATUS_OPTIONS = ["Pending", "Fulfilled", "Rejected"]
 
 BLOOD_COLORS = {
-    "A+": "#C62828", "A-": "#E53935",
-    "B+": "#1565C0", "B-": "#1E88E5",
-    "AB+": "#6A1B9A", "AB-": "#8E24AA",
-    "O+": "#2E7D32", "O-": "#43A047",
+    "A+": "#D32F2F", "A-": "#C62828",
+    "B+": "#1565C0", "B-": "#0D47A1",
+    "AB+": "#6A1B9A", "AB-": "#4A148C",
+    "O+": "#2E7D32", "O-": "#1B5E20",
+    "Unknown": "#757575",
 }
 
-def section(title, content):
+def blood_badge(blood_type: str) -> ft.Container:
+    color = BLOOD_COLORS.get(blood_type, "#757575")
     return ft.Container(
-        content=ft.Column([
-            ft.Text(title, size=16, weight=ft.FontWeight.BOLD),
-            ft.Divider(height=8, color="#eeeeee"),
-            content
-        ]),
-        padding=16,
-        margin=ft.margin.only(bottom=14),
-        bgcolor="#f9f9f9",
-        border_radius=10,
-        border=ft.border.all(1, "#e0e0e0")
-    )
-
-def stat_card(label, value, color="#1565C0", warning=False):
-    return ft.Container(
-        content=ft.Column([
-            ft.Text(str(value), size=30, weight=ft.FontWeight.BOLD,
-                    color="#cc0000" if warning and int(value) > 0 else color),
-            ft.Text(label, size=12, color="#666666")
-        ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=4),
-        padding=20,
-        width=150,
-        bgcolor="#ffffff",
-        border_radius=10,
-        border=ft.border.all(2, "#cc0000" if warning and int(value) > 0 else "#e0e0e0"),
-    )
-
-def blood_badge(blood_type):
-    color = BLOOD_COLORS.get(blood_type, "#888888")
-    return ft.Container(
-        content=ft.Text(blood_type, size=12, color="#ffffff", weight=ft.FontWeight.BOLD),
+        content=ft.Text(blood_type, size=12, weight=ft.FontWeight.BOLD, color="#ffffff"),
         bgcolor=color,
         border_radius=6,
-        padding=ft.padding.symmetric(4, 10)
+        padding=ft.Padding.symmetric(vertical=3, horizontal=8),
     )
 
-def status_badge(status):
-    colors = {"Pending": "#F57C00", "Fulfilled": "#2E7D32", "Rejected": "#C62828"}
-    color = colors.get(status, "#888888")
-    return ft.Container(
-        content=ft.Text(status, size=11, color="#ffffff"),
-        bgcolor=color,
-        border_radius=6,
-        padding=ft.padding.symmetric(3, 8)
-    )
-
-def urgency_badge(urgency):
-    colors = {"Normal": "#1565C0", "Urgent": "#F57C00", "Critical": "#C62828"}
+def urgency_badge(urgency: str) -> ft.Container:
+    colors = {
+        "Critical": "#C62828",
+        "High": "#E65100",
+        "Normal": "#1565C0",
+        "Low": "#2E7D32",
+    }
     color = colors.get(urgency, "#888888")
     return ft.Container(
         content=ft.Text(urgency, size=11, color="#ffffff"),
         bgcolor=color,
         border_radius=6,
-        padding=ft.padding.symmetric(3, 8)
+        padding=ft.Padding.symmetric(vertical=2, horizontal=7),
+    )
+
+def status_badge(status: str) -> ft.Container:
+    colors = {
+        "Pending": "#F57C00",
+        "Fulfilled": "#2E7D32",
+        "Rejected": "#C62828",
+    }
+    color = colors.get(status, "#888888")
+    return ft.Container(
+        content=ft.Text(status, size=11, color="#ffffff"),
+        bgcolor=color,
+        border_radius=6,
+        padding=ft.Padding.symmetric(vertical=2, horizontal=7),
+    )
+
+def section(title: str, content: ft.Control) -> ft.Container:
+    return ft.Container(
+        content=ft.Column([
+            ft.Text(title, size=16, weight=ft.FontWeight.BOLD),
+            ft.Divider(height=4),
+            content,
+        ], spacing=8),
+        padding=14,
+        bgcolor="#ffffff",
+        border_radius=10,
+        border=ft.Border.all(1, "#E0E0E0"),
+        margin=ft.Margin.only(bottom=12),
+    )
+
+def stat_card(label: str, value, color: str, warning: bool = False) -> ft.Container:
+    return ft.Container(
+        content=ft.Column([
+            ft.Text(str(value), size=28, weight=ft.FontWeight.BOLD, color=color),
+            ft.Text(label, size=12, color="#555555"),
+        ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=4),
+        padding=16,
+        bgcolor="#FFEBEE" if warning else "#ffffff",
+        border_radius=10,
+        border=ft.Border.all(2, color if warning else "#E0E0E0"),
+        expand=True,
+        alignment=ft.Alignment(0, 0),
     )
