@@ -83,7 +83,7 @@ def build_requests_view(page: ft.Page):
                             blood_badge(r.blood_type),
                             urgency_badge(r.urgency),
                             status_badge(r.status),
-                            ft.Text(r.created_date, size=11, color="#aaaaaa")
+                            ft.Text(r.created_date[:10] if r.created_date else "", size=11, color="#aaaaaa")
                         ], spacing=6),
                         ft.Text(f"Patient: {r.patient_name}", size=14,
                                 weight=ft.FontWeight.BOLD),

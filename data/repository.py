@@ -6,10 +6,7 @@ from models.donation import Donation
 from models.request import Request
 
 
-# ═══════════════════════════════════════════════════════════════════
-#  SETTINGS
-# ═══════════════════════════════════════════════════════════════════
-
+# Settings
 _settings = {
     "low_stock_threshold": 5,
     "max_stock_limit": 100,
@@ -27,15 +24,12 @@ def update_setting(key: str, value):
         _settings[key] = value
 
 
-# ═══════════════════════════════════════════════════════════════════
-#  DONORS
-# ═══════════════════════════════════════════════════════════════════
-
+# ========== DONORS ==========
 def add_donor(donor: Donor):
     conn = get_connection()
     c = conn.cursor()
     c.execute(
-        "INSERT INTO donors (name, age, blood_type, phone, gender) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO donors (name, age, blood_type, phone, gender, total_donations) VALUES (?, ?, ?, ?, ?, 0)",
         (donor.name, donor.age, donor.blood_type, donor.phone, donor.gender)
     )
     conn.commit()
@@ -45,11 +39,11 @@ def add_donor(donor: Donor):
 def get_all_donors():
     conn = get_connection()
     c = conn.cursor()
-    c.execute("SELECT id, name, age, blood_type, phone, gender, last_donation FROM donors")
+    c.execute("SELECT id, name, age, blood_type, phone, gender, last_donation, total_donations FROM donors")
     rows = c.fetchall()
     conn.close()
     return [Donor(id=r[0], name=r[1], age=r[2], blood_type=r[3],
-                  phone=r[4], gender=r[5], last_donation=r[6]) for r in rows]
+                  phone=r[4], gender=r[5], last_donation=r[6], total_donations=r[7] or 0) for r in rows]
 
 
 def update_donor(donor: Donor):
@@ -72,7 +66,6 @@ def delete_donor(donor_id: int):
 
 
 def update_donor_blood_type(donor_id: int, blood_type: str):
-    """Update donor's blood type in donors table"""
     conn = get_connection()
     c = conn.cursor()
     c.execute("UPDATE donors SET blood_type = ? WHERE id = ?", (blood_type, donor_id))
@@ -130,52 +123,88 @@ def get_donor_donation_history(donor_id: int):
     return rows
 
 
-# ═══════════════════════════════════════════════════════════════════
-#  DONATIONS
-# ═══════════════════════════════════════════════════════════════════
-
+# ========== DONATIONS ==========
 def add_donation(donation: Donation, max_limit: int = 100):
     conn = get_connection()
     c = conn.cursor()
 
-    eligible, message = is_eligible_to_donate(donation.donor_id)
-    if not eligible:
-        conn.close()
-        return False, message
+    try:
+        eligible, message = is_eligible_to_donate(donation.donor_id)
+        if not eligible:
+            return False, message
 
-    if donation.blood_type != "Unknown":
-        c.execute("SELECT units FROM stock WHERE blood_type=?", (donation.blood_type,))
-        row = c.fetchone()
-        if row and row[0] + donation.units > max_limit:
-            conn.close()
-            return False, f"❌ Stock limit reached for {donation.blood_type}"
+        today = datetime.now().strftime("%Y-%m-%d")
 
-    today = datetime.now().strftime("%Y-%m-%d")
-
-    c.execute(
-        "INSERT INTO donations (donor_id, blood_type, units, donation_date) VALUES (?, ?, ?, ?)",
-        (donation.donor_id, donation.blood_type, donation.units, today)
-    )
-    c.execute(
-        "UPDATE donors SET last_donation=? WHERE id=?",
-        (today, donation.donor_id)
-    )
-    
-    # If blood type is not Unknown, update stock and donor blood type
-    if donation.blood_type != "Unknown":
+        c.execute(
+            "INSERT INTO donations (donor_id, blood_type, units, donation_date) VALUES (?, ?, ?, ?)",
+            (donation.donor_id, donation.blood_type, donation.units, today)
+        )
+        donation_id = c.lastrowid
+        
+        # Update donor's total donations and last donation date
+        c.execute(
+            "UPDATE donors SET last_donation=?, total_donations = COALESCE(total_donations, 0) + 1 WHERE id=?",
+            (today, donation.donor_id)
+        )
+        
+        # Update stock
         c.execute(
             "UPDATE stock SET units = units + ? WHERE blood_type=?",
             (donation.units, donation.blood_type)
         )
-        # Also update donor's blood type if it was Unknown
-        c.execute(
-            "UPDATE donors SET blood_type = ? WHERE id = ? AND blood_type = 'Unknown'",
-            (donation.blood_type, donation.donor_id)
-        )
+        
+        conn.commit()
+        
+        # Send thank you message in a separate connection
+        send_thank_you_message(donation.donor_id, donation_id, "donation")
+        
+        return True, f"✅ Recorded {donation.units} unit(s)"
+    except Exception as e:
+        return False, f"Error: {str(e)}"
+    finally:
+        conn.close()
+
+
+def send_thank_you_message(donor_id: int, donation_id: int, message_type: str = "donation"):
+    """Send thank you message to donor"""
+    conn = get_connection()
+    c = conn.cursor()
     
-    conn.commit()
+    try:
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        c.execute("""
+            INSERT INTO thank_you_messages (donor_id, donation_id, message_sent_date, message_type)
+            VALUES (?, ?, ?, ?)
+        """, (donor_id, donation_id, now, message_type))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_thank_you_messages(donor_id: int = None):
+    conn = get_connection()
+    c = conn.cursor()
+    
+    if donor_id:
+        c.execute("""
+            SELECT t.id, d.name, t.message_sent_date, t.message_type
+            FROM thank_you_messages t
+            JOIN donors d ON t.donor_id = d.id
+            WHERE t.donor_id = ?
+            ORDER BY t.message_sent_date DESC
+        """, (donor_id,))
+    else:
+        c.execute("""
+            SELECT t.id, d.name, t.message_sent_date, t.message_type
+            FROM thank_you_messages t
+            JOIN donors d ON t.donor_id = d.id
+            ORDER BY t.message_sent_date DESC
+            LIMIT 10
+        """)
+    
+    rows = c.fetchall()
     conn.close()
-    return True, f"✅ Recorded {donation.units} unit(s)"
+    return rows
 
 
 def get_all_donations():
@@ -193,58 +222,29 @@ def get_all_donations():
     return rows
 
 
-def get_pending_donations():
+def get_pending_lab_donations():
+    """Get donors with unknown blood type (these need lab testing)"""
     conn = get_connection()
     c = conn.cursor()
     c.execute("""
-        SELECT donations.id, donors.name, donors.age, donors.gender, donors.phone,
-               donations.units, donations.donation_date, donations.notes
-        FROM donations
-        JOIN donors ON donations.donor_id = donors.id
-        WHERE donations.blood_type = 'Unknown'
-          AND (donations.status = 'Pending' OR donations.status IS NULL)
-        ORDER BY donations.donation_date DESC
+        SELECT id, name, age, gender, phone, last_donation
+        FROM donors
+        WHERE blood_type = 'Unknown'
+        ORDER BY id DESC
     """)
     rows = c.fetchall()
     conn.close()
     return [
         {
             "id": r[0], "donor_name": r[1], "donor_age": r[2],
-            "donor_gender": r[3], "donor_phone": r[4],
-            "units": r[5], "donation_date": r[6], "notes": r[7],
+            "donor_gender": r[3], "donor_phone": r[4], "donation_date": r[5] or "Never",
+            "units": 0, "notes": "",
         }
         for r in rows
     ]
 
 
-def update_donation_blood_type(donation_id: int, blood_type: str, notes: str = ""):
-    conn = get_connection()
-    c = conn.cursor()
-    c.execute("SELECT units, donor_id FROM donations WHERE id=?", (donation_id,))
-    row = c.fetchone()
-    if row:
-        units, donor_id = row
-        c.execute(
-            "UPDATE donations SET blood_type=?, actual_blood_type=?, status='Completed', notes=? WHERE id=?",
-            (blood_type, blood_type, notes or "", donation_id)
-        )
-        c.execute(
-            "UPDATE stock SET units = units + ? WHERE blood_type=?",
-            (units, blood_type)
-        )
-        # Update donor's blood type if it was Unknown
-        c.execute(
-            "UPDATE donors SET blood_type = ? WHERE id = ? AND blood_type = 'Unknown'",
-            (blood_type, donor_id)
-        )
-    conn.commit()
-    conn.close()
-
-
-# ═══════════════════════════════════════════════════════════════════
-#  REQUESTS
-# ═══════════════════════════════════════════════════════════════════
-
+# ========== REQUESTS ==========
 def add_request(request: Request):
     conn = get_connection()
     c = conn.cursor()
@@ -261,48 +261,40 @@ def add_request(request: Request):
 def get_all_requests():
     conn = get_connection()
     c = conn.cursor()
-    c.execute(
-        "SELECT id, patient_name, blood_type, units, urgency, status, created_date "
-        "FROM requests ORDER BY id DESC"
-    )
-    rows = c.fetchall()
-    conn.close()
-    return [
-        Request(id=r[0], patient_name=r[1], blood_type=r[2],
-                units=r[3], urgency=r[4], status=r[5], created_date=r[6])
-        for r in rows
-    ]
-
-
-def get_pending_requests_unknown():
-    conn = get_connection()
-    c = conn.cursor()
-    c.execute("""
-        SELECT id, patient_name, blood_type, units, urgency, status, created_date
-        FROM requests
-        WHERE blood_type = 'Unknown' AND status = 'Pending'
-        ORDER BY id DESC
-    """)
-    rows = c.fetchall()
-    conn.close()
-    return rows
-
-
-def update_request_blood_type_and_units(request_id: int, blood_type: str, units: int):
-    conn = get_connection()
-    c = conn.cursor()
-    c.execute(
-        "UPDATE requests SET blood_type=?, units=? WHERE id=?",
-        (blood_type, units, request_id)
-    )
-    conn.commit()
-    conn.close()
+    try:
+        c.execute(
+            "SELECT id, patient_name, blood_type, units, urgency, status, created_date, fulfilled_date "
+            "FROM requests ORDER BY id DESC"
+        )
+        rows = c.fetchall()
+        conn.close()
+        return [
+            Request(id=r[0], patient_name=r[1], blood_type=r[2],
+                    units=r[3], urgency=r[4], status=r[5], created_date=r[6], fulfilled_date=r[7] or "")
+            for r in rows
+        ]
+    except sqlite3.OperationalError:
+        c.execute(
+            "SELECT id, patient_name, blood_type, units, urgency, status, created_date "
+            "FROM requests ORDER BY id DESC"
+        )
+        rows = c.fetchall()
+        conn.close()
+        return [
+            Request(id=r[0], patient_name=r[1], blood_type=r[2],
+                    units=r[3], urgency=r[4], status=r[5], created_date=r[6], fulfilled_date="")
+            for r in rows
+        ]
 
 
 def update_request_status(request_id: int, status: str):
     conn = get_connection()
     c = conn.cursor()
-    c.execute("UPDATE requests SET status=? WHERE id=?", (status, request_id))
+    try:
+        fulfilled_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S") if status == "Fulfilled" else None
+        c.execute("UPDATE requests SET status=?, fulfilled_date=? WHERE id=?", (status, fulfilled_date, request_id))
+    except:
+        c.execute("UPDATE requests SET status=? WHERE id=?", (status, request_id))
     conn.commit()
     conn.close()
 
@@ -315,10 +307,7 @@ def delete_request(request_id: int):
     conn.close()
 
 
-# ═══════════════════════════════════════════════════════════════════
-#  STOCK
-# ═══════════════════════════════════════════════════════════════════
-
+# ========== STOCK ==========
 def get_all_stock():
     conn = get_connection()
     c = conn.cursor()
@@ -376,10 +365,7 @@ def update_stock(blood_type: str, delta: int, max_limit: int = None):
     return True, f"Stock updated: {new_units} unit(s)"
 
 
-# ═══════════════════════════════════════════════════════════════════
-#  STATS
-# ═══════════════════════════════════════════════════════════════════
-
+# ========== STATS ==========
 def get_stats():
     conn = get_connection()
     c = conn.cursor()
@@ -392,12 +378,15 @@ def get_stats():
     low_threshold = get_settings().get("low_stock_threshold", 5)
     c.execute("SELECT COUNT(*) FROM stock WHERE units < ?", (low_threshold,))
     low_stock = c.fetchone()[0]
+    c.execute("SELECT COUNT(*) FROM thank_you_messages")
+    thank_you_sent = c.fetchone()[0]
     conn.close()
     return {
         "total_donors": total_donors,
         "total_donations": total_donations,
         "pending_requests": pending_requests,
         "low_stock": low_stock,
+        "thank_you_sent": thank_you_sent,
     }
 
 
@@ -420,21 +409,3 @@ def get_expiring_blood(days_ahead: int = 14):
         {"blood_type": r[0], "units": r[1], "donation_date": r[2], "days_left": r[3]}
         for r in rows
     ]
-
-
-def get_expiry_stats():
-    conn = get_connection()
-    c = conn.cursor()
-    c.execute("""
-        SELECT COUNT(*), COALESCE(SUM(units), 0)
-        FROM donations
-        WHERE blood_type != 'Unknown'
-          AND julianday(donation_date, '+42 days') < julianday('now')
-    """)
-    row = c.fetchone()
-    conn.close()
-    return {
-        "expired_count": row[0],
-        "expired_units": row[1],
-        "expiring_soon_units": row[1],
-    }

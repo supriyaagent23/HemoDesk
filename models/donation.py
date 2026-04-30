@@ -7,3 +7,4 @@ class Donation:
     units: int
     donation_date: str = ""
     id: int | None = None
+    lab_verified: bool = False

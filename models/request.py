@@ -8,4 +8,5 @@ class Request:
     urgency: str
     status: str = "Pending"
     created_date: str = ""
+    fulfilled_date: str = ""
     id: int | None = None

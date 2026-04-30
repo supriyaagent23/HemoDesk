@@ -10,14 +10,26 @@ def build_eligibility_view(page: ft.Page):
     wait_days = settings.get("donation_wait_days", 90)
     
     donors = get_all_donors()
+    # Only show donors with known blood type (not "Unknown")
+    eligible_donors = [d for d in donors if d.blood_type != "Unknown"]
     
     donor_dropdown = ft.Dropdown(
         label="Select Donor *",
-        width=350,
+        width=400,
         options=[ft.dropdown.Option(key=str(d.id), text=f"{d.name} ({d.blood_type}) - Last: {d.last_donation or 'Never'}")
-                 for d in donors],
-        hint_text="Choose a donor"
+                 for d in eligible_donors],
+        hint_text="Choose a donor with known blood type"
     )
+    
+    def refresh_donors():
+        nonlocal donors, eligible_donors
+        donors = get_all_donors()
+        eligible_donors = [d for d in donors if d.blood_type != "Unknown"]
+        donor_dropdown.options = [
+            ft.dropdown.Option(key=str(d.id), text=f"{d.name} ({d.blood_type}) - Last: {d.last_donation or 'Never'}")
+            for d in eligible_donors
+        ]
+        page.update()
     
     def check_eligibility(e):
         if not donor_dropdown.value:
@@ -82,8 +94,12 @@ def build_eligibility_view(page: ft.Page):
         
         section("Check Donor Eligibility", ft.Column([
             donor_dropdown,
-            ft.ElevatedButton("Check Eligibility", on_click=check_eligibility, 
-                            bgcolor="#1565C0", color="#ffffff"),
+            ft.Row([
+                ft.ElevatedButton("Check Eligibility", on_click=check_eligibility, 
+                                bgcolor="#1565C0", color="white"),
+                ft.ElevatedButton("🔄 Refresh", on_click=lambda e: refresh_donors(), 
+                                bgcolor="#6A1B9A", color="white", icon=ft.Icons.REFRESH),
+            ], spacing=10),
             result_text,
         ], spacing=10)),
         
