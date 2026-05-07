@@ -8,63 +8,67 @@
 
 A comprehensive desktop application for managing blood donors, donations, inventory, and patient requests. Built with **Flet** (Python GUI framework) and **SQLite** database.
 
-## ✨ Features
+## Features
 
-### 🖥️ Dashboard
-- Real-time statistics overview
-- Blood stock levels with visual progress bars
-- Quick action buttons for common tasks
-- Pending lab tests notifications
-- Professional medical theme
-
-### 👥 Donor Management
+### Donor Management
 - Add, edit, and delete donors
-- Track donor blood types (including "Unknown" for lab testing)
-- View donation history
-- Automatic total donations counter
-- Phone number and age validation
+- Passport number as unique identifier
+- Search donors by name or passport
+- Filter donors by eligibility status
+- Age validation (18-80 years)
+- Phone number validation (10 digits)
 
-### 🔬 Lab Testing & Donations
-- Test unknown blood types in one click
-- Automatic donation recording after blood type confirmation
-- Thank you messages for donors
-- Seamless workflow: Test → Donate → Stock
-
-### 📦 Blood Stock Management
-- Real-time inventory tracking for all 8 blood types
+### Blood Stock Management
+- Real-time tracking for all 8 blood types (A+, A-, B+, B-, AB+, AB-, O+, O-)
 - Low stock alerts (threshold: 5 units)
-- Visual progress bars for capacity monitoring
-- Add/remove stock manually
-- Configure settings (threshold, max limit, wait periods)
+- Visual progress bars
+- Manual stock add/remove
+- Configurable settings
 
-### 📋 Patient Requests
-- Create blood requests for patients
+### Lab Testing & Donations
+- Test unknown blood types
+- Automatic donation recording after test (1 unit)
+- Thank you messages for donors
+
+### Donation Recording
+- Search donors by name or passport
+- Enter units (1-10)
+- Automatic stock update
+- Eligibility check before donation
+
+### Patient Requests
+- Create blood requests with urgency levels (Critical, High, Normal, Low)
 - Track request status (Pending/Fulfilled/Rejected)
 - Filter by status
-- Urgency levels (Critical, High, Normal, Low)
-- Auto-update stock when fulfilling requests
+- Auto-update stock when fulfilling
 
-### ✅ Donor Eligibility
-- Check if donors are eligible to donate
+### Donor Eligibility
 - 90-day waiting period between donations
 - Age restrictions (18-65 years)
-- View donor donation history
-- Eligibility rules and guidelines
+- Donation history view
 
-### 🎉 Thank You System
-- Automatic thank you messages for donors
-- Track all thank you messages sent
-- Snackbar notifications on successful donations
+## Tech Stack
 
-## 🚀 Quick Start
+- **Language**: Python 3.9+
+- **GUI Framework**: Flet 0.20+
+- **Database**: SQLite
+- **Testing**: pytest, pytest-cov
+- **Code Quality**: black, flake8, mypy, ruff
 
-### Prerequisites
-- Python 3.9 or higher
-- pip package manager
+## Installation
 
-### Installation
-
-1. Clone the repository
 ```bash
+# Clone repository
 git clone https://github.com/supriyaagent23/HemoDesk.git
 cd HemoDesk
+
+# Create virtual environment
+python -m venv venv
+venv\Scripts\activate  # On Windows
+# source venv/bin/activate  # On macOS/Linux
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run application
+python main.py
