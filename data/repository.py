@@ -28,33 +28,44 @@ def update_setting(key: str, value):
 def add_donor(donor: Donor):
     conn = get_connection()
     c = conn.cursor()
-    c.execute(
-        "INSERT INTO donors (name, age, blood_type, phone, gender, total_donations) VALUES (?, ?, ?, ?, ?, 0)",
-        (donor.name, donor.age, donor.blood_type, donor.phone, donor.gender)
-    )
-    conn.commit()
-    conn.close()
+    try:
+        c.execute(
+            "INSERT INTO donors (name, age, blood_type, phone, passport_no, gender, total_donations) VALUES (?, ?, ?, ?, ?, ?, 0)",
+            (donor.name, donor.age, donor.blood_type, donor.phone, donor.passport_no, donor.gender)
+        )
+        conn.commit()
+        return True, "Donor added successfully"
+    except sqlite3.IntegrityError:
+        return False, "Error adding donor"
+    finally:
+        conn.close()
 
 
 def get_all_donors():
     conn = get_connection()
     c = conn.cursor()
-    c.execute("SELECT id, name, age, blood_type, phone, gender, last_donation, total_donations FROM donors")
+    c.execute("SELECT id, name, age, blood_type, phone, passport_no, gender, last_donation, total_donations FROM donors")
     rows = c.fetchall()
     conn.close()
     return [Donor(id=r[0], name=r[1], age=r[2], blood_type=r[3],
-                  phone=r[4], gender=r[5], last_donation=r[6], total_donations=r[7] or 0) for r in rows]
+                  phone=r[4], passport_no=r[5], gender=r[6], 
+                  last_donation=r[7], total_donations=r[8] or 0) for r in rows]
 
 
 def update_donor(donor: Donor):
     conn = get_connection()
     c = conn.cursor()
-    c.execute(
-        "UPDATE donors SET name=?, age=?, blood_type=?, phone=?, gender=? WHERE id=?",
-        (donor.name, donor.age, donor.blood_type, donor.phone, donor.gender, donor.id)
-    )
-    conn.commit()
-    conn.close()
+    try:
+        c.execute(
+            "UPDATE donors SET name=?, age=?, blood_type=?, phone=?, passport_no=?, gender=? WHERE id=?",
+            (donor.name, donor.age, donor.blood_type, donor.phone, donor.passport_no, donor.gender, donor.id)
+        )
+        conn.commit()
+        return True, "Donor updated successfully"
+    except Exception as e:
+        return False, f"Error updating donor: {str(e)}"
+    finally:
+        conn.close()
 
 
 def delete_donor(donor_id: int):
@@ -66,6 +77,7 @@ def delete_donor(donor_id: int):
 
 
 def update_donor_blood_type(donor_id: int, blood_type: str):
+    """Update donor's blood type in donors table"""
     conn = get_connection()
     c = conn.cursor()
     c.execute("UPDATE donors SET blood_type = ? WHERE id = ?", (blood_type, donor_id))
@@ -212,7 +224,7 @@ def get_all_donations():
     c = conn.cursor()
     c.execute("""
         SELECT donations.id, donors.id, donors.name, donations.blood_type,
-               donations.units, donations.donation_date
+               donations.units, donations.donation_date, donations.lab_verified
         FROM donations
         JOIN donors ON donations.donor_id = donors.id
         ORDER BY donations.donation_date DESC
@@ -242,6 +254,35 @@ def get_pending_lab_donations():
         }
         for r in rows
     ]
+
+
+def verify_donation_blood_type(donation_id: int, blood_type: str, notes: str = ""):
+    """Verify donation blood type after lab testing"""
+    conn = get_connection()
+    c = conn.cursor()
+    try:
+        c.execute("SELECT units, donor_id FROM donations WHERE id=?", (donation_id,))
+        row = c.fetchone()
+        if row:
+            units, donor_id = row
+            c.execute(
+                "UPDATE donations SET blood_type=?, actual_blood_type=?, lab_verified=1, status='Completed', notes=? WHERE id=?",
+                (blood_type, blood_type, notes or "", donation_id)
+            )
+            c.execute(
+                "UPDATE stock SET units = units + ? WHERE blood_type=?",
+                (units, blood_type)
+            )
+            # Update donor's blood type if it was Unknown
+            c.execute(
+                "UPDATE donors SET blood_type = ? WHERE id = ? AND blood_type = 'Unknown'",
+                (blood_type, donor_id)
+            )
+            # Send thank you message for verified donation
+            send_thank_you_message(donor_id, donation_id, "lab_verified")
+        conn.commit()
+    finally:
+        conn.close()
 
 
 # ========== REQUESTS ==========
@@ -400,6 +441,7 @@ def get_expiring_blood(days_ahead: int = 14):
         FROM donations
         WHERE donation_date IS NOT NULL
           AND blood_type != 'Unknown'
+          AND lab_verified = 1
           AND julianday(donation_date, '+42 days') <= julianday(?)
         ORDER BY days_left ASC
     """, (cutoff,))

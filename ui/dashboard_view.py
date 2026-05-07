@@ -11,7 +11,7 @@ def build_dashboard_view(page: ft.Page, navigate_to):
     pending_lab = get_pending_lab_donations()
     total_blood = sum(s.units for s in stock)
     
-    # Professional Color Scheme
+    
     colors = {
         "primary": "#2563EB",
         "success": "#10B981",
@@ -24,7 +24,7 @@ def build_dashboard_view(page: ft.Page, navigate_to):
         "border": "#E5E7EB",
     }
     
-    # Create all dashboard sections
+    
     sections = []
     
     # 1. Header

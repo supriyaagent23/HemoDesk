@@ -6,4 +6,3 @@ from ui.donors_view import build_donors_view
 from ui.stock_view import build_stock_view
 from ui.requests_view import build_requests_view
 from ui.lab_tests_view import build_lab_tests_view
-from ui.eligibility_view import build_eligibility_view

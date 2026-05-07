@@ -9,7 +9,7 @@ def init_db():
     conn = get_connection()
     c = conn.cursor()
 
-    # Donors table
+    # Donors table with passport_no field
     c.execute("""
     CREATE TABLE IF NOT EXISTS donors (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -18,6 +18,7 @@ def init_db():
         blood_type TEXT NOT NULL,
         phone TEXT NOT NULL,
         gender TEXT DEFAULT '',
+        passport_no TEXT,
         last_donation TEXT DEFAULT '',
         total_donations INTEGER DEFAULT 0
     )
@@ -74,12 +75,15 @@ def init_db():
         FOREIGN KEY (donation_id) REFERENCES donations(id)
     )
     """)
-
-    # Add missing columns for existing tables (for backward compatibility)
     try:
         c.execute("ALTER TABLE donors ADD COLUMN total_donations INTEGER DEFAULT 0")
     except sqlite3.OperationalError:
-        pass  # Column already exists
+        pass
+    
+    try:
+        c.execute("ALTER TABLE donors ADD COLUMN passport_no TEXT")
+    except sqlite3.OperationalError:
+        pass
     
     try:
         c.execute("ALTER TABLE donations ADD COLUMN lab_verified BOOLEAN DEFAULT 0")
@@ -101,7 +105,6 @@ def init_db():
     except sqlite3.OperationalError:
         pass
 
-    # Seed blood types
     for bt in ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]:
         c.execute(
             "INSERT OR IGNORE INTO stock (blood_type, units) VALUES (?, 0)", (bt,)

@@ -10,11 +10,9 @@ def main(page: ft.Page):
     page.spacing = 0
     page.bgcolor = "#f5f5f5"
     page.theme_mode = ft.ThemeMode.LIGHT
-    
-    # Initialize database
+
     init_db()
     
-    # Build navigation
     home_view = build_home_view(page)
     page.add(home_view)
     page.update()

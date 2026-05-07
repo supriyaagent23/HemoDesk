@@ -4,7 +4,7 @@ from ui.donors_view import build_donors_view
 from ui.stock_view import build_stock_view
 from ui.requests_view import build_requests_view
 from ui.lab_tests_view import build_lab_tests_view
-from ui.eligibility_view import build_eligibility_view
+# REMOVED: from ui.eligibility_view import build_eligibility_view
 
 
 def build_home_view(page: ft.Page):
@@ -14,17 +14,16 @@ def build_home_view(page: ft.Page):
     # Store views cache
     views = {}
     
-    # Navigation items (removed Donations since it's combined with Lab Tests)
     nav_items = [
         {"icon": ft.Icons.DASHBOARD, "label": "Dashboard", "color": "#1565C0", "index": 0},
         {"icon": ft.Icons.PEOPLE, "label": "Donors", "color": "#2E7D32", "index": 1},
         {"icon": ft.Icons.OPACITY, "label": "Blood Stock", "color": "#C62828", "index": 2},
         {"icon": ft.Icons.ASSIGNMENT, "label": "Requests", "color": "#F57C00", "index": 3},
-        {"icon": ft.Icons.SCIENCE, "label": "Test & Donate", "color": "#8E24AA", "index": 4},
-        {"icon": ft.Icons.HEALTH_AND_SAFETY, "label": "Eligibility", "color": "#0097A7", "index": 5},
+        {"icon": ft.Icons.SCIENCE, "label": "Test & Donate", "color": "#6A1B9A", "index": 4},
+        
     ]
     
-    # Store current index
+
     current_index = [0]
     
     # Function to create navigation items
@@ -45,7 +44,7 @@ def build_home_view(page: ft.Page):
             on_click=on_click,
         )
     
-    # Function to load views
+
     def load_view(index):
         # Clear content area
         content_area.controls.clear()
@@ -70,14 +69,11 @@ def build_home_view(page: ft.Page):
             if "lab_tests" not in views:
                 views["lab_tests"] = build_lab_tests_view(page)
             content_area.controls.append(views["lab_tests"])
-        elif index == 5:
-            if "eligibility" not in views:
-                views["eligibility"] = build_eligibility_view(page)
-            content_area.controls.append(views["eligibility"])
+        # REMOVED: Eligibility case (index 5)
         
         page.update()
     
-    # Build navigation sidebar
+
     nav_sidebar = ft.Container(
         content=ft.Column([
             ft.Container(
@@ -97,7 +93,7 @@ def build_home_view(page: ft.Page):
         border_radius=ft.BorderRadius.only(top_right=10, bottom_right=10),
     )
     
-    # Load default view (dashboard)
+
     load_view(0)
     
     # Main layout
