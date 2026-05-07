@@ -27,6 +27,7 @@ def build_donors_view(page: ft.Page):
         ],
     )
     
+    # Form fields
     name_field = ft.TextField(label="Full Name *", width=200, hint_text="Enter donor's full name")
     age_field = ft.TextField(label="Age *", width=100, keyboard_type=ft.KeyboardType.NUMBER, max_length=3, hint_text="18-80")
     blood_dropdown = ft.Dropdown(
@@ -36,14 +37,11 @@ def build_donors_view(page: ft.Page):
         options=[ft.dropdown.Option(b) for b in BLOOD_TYPES_WITH_UNKNOWN]
     )
     phone_field = ft.TextField(label="Phone *", width=170, keyboard_type=ft.KeyboardType.PHONE, max_length=10, hint_text="10 digits")
-    
-    # PASSPORT FIELD
     passport_field = ft.TextField(
         label="Passport Number *", 
         width=170, 
         hint_text="Enter unique passport number"
     )
-    
     gender_dropdown = ft.Dropdown(
         label="Gender", 
         width=120, 
@@ -220,7 +218,6 @@ def build_donors_view(page: ft.Page):
         page.update()
     
     def submit(e):
-        # Check all required fields including passport
         if not all([name_field.value, age_field.value, blood_dropdown.value, phone_field.value, passport_field.value]):
             status_text.value = "❌ Please fill all required fields (Name, Age, Blood Type, Phone, Passport)"
             status_text.color = "#C62828"
@@ -283,7 +280,18 @@ def build_donors_view(page: ft.Page):
         status_text.color = "#2E7D32"
         page.update()
     
-    # Trigger search/filter on input change
+    def refresh_button_click(e):
+        """Manual refresh button handler"""
+        # Clear search and filter
+        search_field.value = ""
+        filter_dropdown.value = "All"
+        # Refresh the list
+        refresh_list()
+        status_text.value = "✅ Donor list refreshed!"
+        status_text.color = "#2E7D32"
+        page.update()
+    
+
     def on_search_change(e):
         refresh_list()
     
@@ -296,11 +304,20 @@ def build_donors_view(page: ft.Page):
     # Initial render
     refresh_list()
     
-    # Search/Filter Bar
     search_bar = ft.Container(
         content=ft.Column([
-            ft.Text("🔍 Search & Filter Donors", size=16, weight=ft.FontWeight.BOLD),
-            ft.Row([search_field, filter_dropdown], spacing=10, wrap=False),
+            ft.Row([
+                ft.Text("🔍 Search & Filter Donors", size=16, weight=ft.FontWeight.BOLD),
+                ft.ElevatedButton(
+                    "🔄 Refresh", 
+                    on_click=refresh_button_click, 
+                    bgcolor="#1976D2", 
+                    color="white", 
+                    icon=ft.Icons.REFRESH,
+                    height=35,
+                ),
+            ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+            ft.Row([search_field, filter_dropdown], spacing=10, wrap=True),
         ], spacing=8),
         padding=12,
         bgcolor="white",
@@ -308,6 +325,7 @@ def build_donors_view(page: ft.Page):
         margin=ft.Margin.only(bottom=10),
     )
     
+    # Form Section
     form = ft.Column([
         ft.Row([
             name_field,
